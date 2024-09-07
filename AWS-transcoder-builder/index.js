@@ -21,8 +21,8 @@ const resuolution=[
 const s3Client = new S3Client({
     region:"ap-south-1",
     credentials:{
-        accessKeyId:"AKIAROPIQWHFKLSKN5PU",
-        secretAccessKey:"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"
+        accessKeyId:"",
+        secretAccessKey:""
     }
 })
 
