@@ -1,98 +1,109 @@
-<div align="center">
+# 🎥 Scalable Video Transcoding Pipeline
 
-<div>
-    <img src="https://img.shields.io/badge/-javascript-black?style=for-the-badge&logoColor=white&logo=javascript&color=f5e942" alt="typescript" />
-    <img src="https://img.shields.io/badge/-Docker-black?style=for-the-badge&logoColor=white&logo=docker&color=3178C6"alt="tailwindcss" />
-    <img src="https://img.shields.io/badge/AWS-grey?style=for-the-badge&logo=aws" alt="tailwind" />
-  </div>
+[![Stack](https://img.shields.io/badge/Stack-Node.js%20%7C%20FFmpeg%20%7C%20AWS-blue)](#tech-stack)
+[![License: ISC](https://img.shields.io/badge/License-ISC-brightgreen.svg)](https://opensource.org/licenses/ISC)
+[![Architecture: Event--Driven](https://img.shields.io/badge/Architecture-Event--Driven-orange)](#system-architecture)
 
-<h3 align="center">Video Transcoding System</h3>
+A production-grade, highly scalable video transcoding engine built on AWS serverless and container technologies. This system automates the process of converting raw video uploads into multiple resolutions optimized for web playback (360p, 480p, 720p, 1080p).
 
-</div>  
+---
 
-***Overview***
-The Video Transcoding System is a robust and scalable solution designed for efficient video processing, 
-utilizing a stack of modern technologies including Node.js, Docker, AWS S3, AWS SQS, Express.js, and FFmpeg. 
-This system is tailored to handle video transcoding tasks, converting videos from one format to another to meet various quality and compatibility requirements.
-The integration of these technologies ensures a high-performance, reliable, and flexible system suitable for a range of applications
+## 🏗️ System Architecture
 
-## <a name="tech-stack">⚙️ Tech Stack</a>
-- Next.js
-- Node JS
-- Express Js
-- Docker
-- AWS
+The pipeline utilizes a **Producer-Consumer** pattern with asynchronous processing to ensure high throughput and fault tolerance.
 
-## <a name="features">🔋 Features</a>
-
-👉 **Scalability**: The system is designed to handle a large volume of video transcoding requests by leveraging AWS SQS for queuing and Docker for containerization.
-
-👉 **Flexibility**: Supports multiple video formats, allowing users to convert videos to meet specific requirements.
-
-👉 **Reliability**: Utilizes AWS S3 for durable and highly available storage of video files and FFmpeg for reliable video processing.
-
-👉 **API Integration**: Provides RESTful API endpoints through Express.js for easy integration with other services and applications.
-
-👉 **FFmpeg**: Powerful multimedia framework used for video and audio processing, including transcoding, format conversion, and quality adjustments.
-
-
-## <a name="quick-start">🤸 Quick Start Locally</a>
-
-Follow these steps to set up the project locally on your machine.
-
-**Prerequisites**
-
-- [Node. js](https://nodejs.org/en)
-- [npm](https://www.npmjs.com/) (Node Package Manager)
-- [Docker](https://docker.com/)
-- [AWS](https://aws.amazon.com/)
-
-**Cloning the Repository**
-
-```bash or PowerShell
-git clone https://github.com/suraj-o/https://github.com/suraj-o/video-transcode-pipeline
-cd video-transcode-pipeline
+```mermaid
+graph TD
+    User([User / Client]) -->|1. Upload Raw Video| S3_Temp[(S3: Temp Storage)]
+    S3_Temp -->|2. Event Trigger| SQS_Queue[AWS SQS: Jobs Queue]
+    
+    subgraph "Event Consumer Service"
+        Consumer[video-consumer] -->|3. Polling| SQS_Queue
+    end
+    
+    Consumer -->|4. Trigger Task| ECS_Fargate[AWS ECS: Fargate Task]
+    
+    subgraph "Transcoding Engine"
+        ECS_Fargate -->|5. Multi-Resolution FFmpeg| FFmpeg[FFmpeg Processing]
+        FFmpeg -->|6. Upload Results| S3_Final[(S3: Final Optimized Bucket)]
+        FFmpeg -->|7. Success ACK| SQS_Queue
+    end
 ```
 
-**First of all start server**
+### Key Engineering Principles
+- **Reliable Handoff**: The SQS message is only deleted *after* a successful transcoding operation. If a container crashes, the message naturally reappears in the queue for a retry.
+- **Resource Efficiency**: FFmpeg runs in a sequential loop within the Fargate container to prevent CPU/Memory thrashing and ensure stable execution on varied compute profiles.
+- **Decoupled Configuration**: Infrastructure details are entirely externalized through environment variables, supporting multiple environments (Dev, Staging, Prod).
 
-**NOTE**: change aws with your credentials  
+---
 
+## ⚙️ Tech Stack
+
+- **Runtime**: Node.js (TypeScript)
+- **Processing**: FFmpeg (fluent-ffmpeg)
+- **Containerization**: Docker
+- **Cloud Infrastructure**: 
+    - **AWS S3**: Durable staging and final media storage.
+    - **AWS SQS**: Reliable message queuing with visibility timeouts.
+    - **AWS ECS (Fargate)**: Serverless container execution for scalable processing tasks.
+
+---
+
+## 🚀 Getting Started
+
+### Prerequisites
+- Node.js (v18+)
+- Docker (installed and running)
+- AWS Account with permissions for S3, SQS, and ECS.
+
+### 1. Environment Configuration
+Copy the template and fill in your infrastructure details:
 ```bash
----you must change credentials given following fields below---
-
---AWS--
-video-consumer/src/config/index:4
-video-consumer/src/config/index:12
-AWS-transcoder-builder/index:21
-
---change task configuration--
-video-consumer/src/commands/command.ts
+cp .env.example .env
 ```
+Key variables required:
+- `SQS_QUEUE_URL`: The full ARN/URL of your processing queue.
+- `ECS_CLUSTER_NAME`: The target cluster for transcoding tasks.
+- `ECS_TASK_DEFINITION`: The family/version of your Fargate task.
+- `S3_DESTINATION_BUCKET`: Where output videos will be stored.
 
+### 2. Setup Components
 
-**Installation**
-
-**video-consumer**
+#### **Video Consumer**
+The brain of the operation that monitors the queue and orchestrates tasks.
 ```bash
----Install the project dependencies using npm:---
-
-cd video-consume
+cd video-consumer
 npm install
-
 npm run dev
 ```
 
-**main-server**
+#### **Transcoder Builder (Dockerized)**
+The FFmpeg engine. This image should be built and pushed to your ECR.
 ```bash
----run following command---
-cd main-server
-npm install
-
-npm start
-
+cd AWS-transcoder-builder
+docker build -t video-transcoder .
 ```
 
-**Now pipeline get started**
+---
 
+## 📂 Repository Structure
 
+```text
+├── AWS-transcoder-builder/   # FFmpeg Docker environment & transcoding logic
+├── video-consumer/           # SQS Poller & ECS Task orchestrator (TypeScript)
+├── .env.example              # Centralized configuration template
+└── README.md                 # System documentation
+```
+
+---
+
+## 📈 Operational & Scaling Notes
+
+- **Parallel Processing**: To handle higher spikes, simply increase the `count` in the ECS Service or run multiple instances of the `video-consumer`.
+- **Fault Tolerance**: Ensure your SQS **Visibility Timeout** is set to at least 30 minutes to allow long videos time to finish transcoding.
+- **Dead Letter Queues (DLQ)**: Recommended for production to capture "poison pill" files that consistently fail FFmpeg processing.
+
+---
+
+## 📄 License
+This project is licensed under the ISC License.
