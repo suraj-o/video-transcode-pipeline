@@ -1,45 +1,50 @@
 import { RunTaskCommand } from "@aws-sdk/client-ecs";
-import { ReceiveMessageCommand,DeleteMessageCommand } from "@aws-sdk/client-sqs";
+import { ReceiveMessageCommand, DeleteMessageCommand } from "@aws-sdk/client-sqs";
+import dotenv from "dotenv";
 
+dotenv.config();
 
-export const queeRecivedCommand= new ReceiveMessageCommand({
-    QueueUrl:"https://sqs.us-east-1.amazonaws.com",
-    MaxNumberOfMessages:1,
-    WaitTimeSeconds:15
-})
+const queueUrl = process.env.SQS_QUEUE_URL || "";
 
-export function GetDeleteMessageCommand(ReceiptHandle:string){
+export const queeRecivedCommand = new ReceiveMessageCommand({
+    QueueUrl: queueUrl,
+    MaxNumberOfMessages: 1,
+    WaitTimeSeconds: 15
+});
+
+export function GetDeleteMessageCommand(ReceiptHandle: string) {
     return new DeleteMessageCommand({
-        QueueUrl:"https://sqs.us-east-1.amazonaws.com",
-       ReceiptHandle:ReceiptHandle
-   })
+        QueueUrl: queueUrl,
+        ReceiptHandle: ReceiptHandle
+    });
 }
 
-
-export function GetTaskCommand(bucket:string,key:string,id:string){
-     return new RunTaskCommand({
-        cluster:"https://sqs.us-east-1.amazonaws.com",
-        taskDefinition:"https://sqs.us-east-1.amazonaws.com",
-        launchType:"FARGATE",
-        count:1,
-        networkConfiguration:{
-            awsvpcConfiguration:{
-                assignPublicIp:"ENABLED",
-                subnets:["https://sqs.us-east-1.amazonaws.com", "https://sqs.us-east-1.amazonaws.com", "https://sqs.us-east-1.amazonaws.com"],
-                securityGroups:["https://sqs.us-east-1.amazonaws.com"]
+export function GetTaskCommand(bucket: string, key: string, id: string, receiptHandle: string) {
+    return new RunTaskCommand({
+        cluster: process.env.ECS_CLUSTER_NAME,
+        taskDefinition: process.env.ECS_TASK_DEFINITION,
+        launchType: "FARGATE",
+        count: 1,
+        networkConfiguration: {
+            awsvpcConfiguration: {
+                assignPublicIp: "ENABLED",
+                subnets: process.env.ECS_SUBNETS ? process.env.ECS_SUBNETS.split(",") : [],
+                securityGroups: process.env.ECS_SECURITY_GROUPS ? process.env.ECS_SECURITY_GROUPS.split(",") : []
             }
         },
-        overrides:{
-            containerOverrides:[
+        overrides: {
+            containerOverrides: [
                 {
-                    name:"https://sqs.us-east-1.amazonaws.com",
-                    environment:[
-                        {name:"BUCKET_NAME",value:bucket},
-                        {name:"KEY",value:key},
-                        {name:"ID",value:id}
+                    name: process.env.ECS_CONTAINER_NAME || "transcoder",
+                    environment: [
+                        { name: "BUCKET_NAME", value: bucket },
+                        { name: "KEY", value: key },
+                        { name: "ID", value: id },
+                        { name: "SQS_RECEIPT_HANDLE", value: receiptHandle },
+                        { name: "SQS_QUEUE_URL", value: queueUrl }
                     ]
                 }
             ]
         }
-    })
+    });
 }
