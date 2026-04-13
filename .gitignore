@@ -1,4 +1,2 @@
-/AWS-transcoder-builder/node_modules
-/video-consumer/node_modules
-/video-consumer/dist
-
+node_modules
+dist

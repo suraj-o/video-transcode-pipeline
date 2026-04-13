@@ -15,10 +15,12 @@
     "@aws-sdk/client-sqs": "^3.645.0",
     "@types/uuid": "^10.0.0",
     "aws-lambda": "^1.0.7",
+    "dotenv": "^17.4.2",
     "tsc-watch": "^6.2.0",
     "uuid": "^10.0.0"
   },
   "devDependencies": {
-    "@types/aws-lambda": "^8.10.145"
+    "@types/aws-lambda": "^8.10.145",
+    "@types/dotenv": "^6.1.1"
   }
 }
